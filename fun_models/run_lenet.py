@@ -84,3 +84,5 @@ for epoch in range(EPOCHS):
   writer.add_scalar('Accuracy/test', running_acc / total_samples, epoch)
   print('.', end='')
 print()
+
+writer.close()
