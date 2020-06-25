@@ -21,8 +21,8 @@ rc_params = {
     'titlesize'  : 18,
   },
   'lines': {
-    'linewidth' : 3,
-    'markersize': 8,
+    'linewidth' : 2,
+    'markersize': 6,
   },
 }
 for key, param in rc_params.items():

@@ -13,7 +13,7 @@ from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 
 from lenet import LeNet
-from weird_layers.activations import Sin
+from weird_layers import activations as trig
 
 from run_utils import run_epoch
 from log_utils import BatchPrintLogger
@@ -40,8 +40,9 @@ test_loader = DataLoader(test_set, batch_size=2048, shuffle=False,
                          num_workers=CPU_NUM)
 
 models = {
-  'Sin': LeNet(act_mod=Sin).to(DEVICE),
   'ReLU': LeNet(act_mod=nn.ReLU).to(DEVICE),
+  'Sin': LeNet(act_mod=trig.Sin).to(DEVICE),
+  'Cos': LeNet(act_mod=trig.Cos).to(DEVICE),
   'TanH': LeNet(act_mod=nn.Tanh).to(DEVICE),
 }
 
@@ -75,7 +76,7 @@ for name, model in models.items():
   results[name] = result
 
 this_file_path = os.path.dirname(os.path.realpath(__file__))
-results_path = os.path.join(this_file_path, 'results', 'lenet.json')
+results_path = os.path.join(this_file_path, 'results', 'lenet_trig.json')
 
 with open(results_path, 'w') as fp:
   json.dump(results, fp)
