@@ -1,3 +1,4 @@
+import json
 import os
 
 import torch
@@ -14,6 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 from lenet import LeNet
 from weird_layers.activations import Sin
 
+from run_utils import run_epoch
+from log_utils import BatchPrintLogger
+
 DEVICE = 'cuda' if torch.cuda.is_available else 'cpu'
 CPU_NUM = os.cpu_count()
 
@@ -25,64 +29,53 @@ transform = transforms.Compose([
 ])
 
 DATA_PATH = os.path.join(os.path.expanduser('~'), 'data')
-train_set = datasets.MNIST(root=DATA_PATH, train=True, transform=transform, download=True)
-test_set = datasets.MNIST(root=DATA_PATH, train=False, transform=transform, download=True)
+train_set = datasets.MNIST(root=DATA_PATH, train=True, transform=transform,
+                           download=True)
+test_set = datasets.MNIST(root=DATA_PATH, train=False, transform=transform,
+                          download=True)
 
-train_loader = DataLoader(train_set, batch_size=2048, shuffle=False, num_workers=CPU_NUM)
-test_loader = DataLoader(test_set, batch_size=2048, shuffle=False, num_workers=CPU_NUM)
+train_loader = DataLoader(train_set, batch_size=2048, shuffle=False,
+                          num_workers=CPU_NUM)
+test_loader = DataLoader(test_set, batch_size=2048, shuffle=False,
+                         num_workers=CPU_NUM)
 
-model = LeNet(act_mod=Sin).to(DEVICE)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
-writer = SummaryWriter()
+models = {
+  'Sin': LeNet(act_mod=Sin).to(DEVICE),
+  'ReLU': LeNet(act_mod=nn.ReLU).to(DEVICE),
+  'TanH': LeNet(act_mod=nn.Tanh).to(DEVICE),
+}
 
-for epoch in range(EPOCHS):
-  running_loss = 0.0
-  running_acc = 0.0
-  total_samples = 0
+results = {}
 
-  model.train()
-  for idx, data in enumerate(train_loader, 0):
-    x, y = data
-    x = x.to(DEVICE)
-    y = y.to(DEVICE)
+for name, model in models.items():
+  result = {
+    'epochs': [],
+    'train': {'accuracy': [], 'loss': []},
+    'valid': {'accuracy': [], 'loss': []},
+  }
+  print(f'===> {name} <===')
+  criterion = nn.CrossEntropyLoss()
+  optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
 
-    optimizer.zero_grad()
+  logger = BatchPrintLogger(print_every=10)
 
-    y_hat = model(x)
-    loss = criterion(y_hat, y)
-    loss.backward()
-    optimizer.step()
+  for epoch in range(EPOCHS):
+    result['epochs'].append(epoch+1)
+    print(f'Epoch: {epoch+1}/{EPOCHS}')
+    loss, accuracy, _ = run_epoch(model, train_loader, criterion,
+                                  optimizer=optimizer, device=DEVICE,
+                                  logger_fn=logger)
+    result['train']['loss'].append(loss)
+    result['train']['accuracy'].append(accuracy)
+    loss, accuracy, _ = run_epoch(model, test_loader, criterion, device=DEVICE,
+                                  logger_fn=logger)
+    result['valid']['loss'].append(loss)
+    result['valid']['accuracy'].append(accuracy)
 
-    _, predicted = torch.max(y_hat.data, 1)
-    running_acc += (predicted == y).sum().item()
+  results[name] = result
 
-    running_loss += loss.item()
-    total_samples += len(x)
-  writer.add_scalar('Loss/train', running_loss / total_samples, epoch)
-  writer.add_scalar('Accuracy/train', running_acc / total_samples, epoch)
+this_file_path = os.path.dirname(os.path.realpath(__file__))
+results_path = os.path.join(this_file_path, 'results', 'lenet.json')
 
-  running_loss = 0.0
-  running_acc = 0.0
-  total_samples = 0
-  model.eval()
-  with torch.no_grad():
-    for idx, data in enumerate(test_loader, 0):
-      x, y = data
-      x = x.to(DEVICE)
-      y = y.to(DEVICE)
-
-      y_hat = model(x)
-      loss = criterion(y_hat, y)
-
-      _, predicted = torch.max(y_hat.data, 1)
-      running_acc += (predicted == y).sum().item()
-
-      running_loss += loss.item()
-      total_samples += len(x)
-  writer.add_scalar('Loss/test', running_loss / total_samples, epoch)
-  writer.add_scalar('Accuracy/test', running_acc / total_samples, epoch)
-  print('.', end='')
-print()
-
-writer.close()
+with open(results_path, 'w') as fp:
+  json.dump(results, fp)
