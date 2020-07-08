@@ -35,11 +35,15 @@ test_set = datasets.MNIST(root=DATA_PATH, train=False, transform=transform,
                           download=True)
 
 train_loader = DataLoader(train_set, batch_size=2048, shuffle=False,
-                          num_workers=CPU_NUM)
+                          pin_memory=True, num_workers=CPU_NUM)
 test_loader = DataLoader(test_set, batch_size=2048, shuffle=False,
-                         num_workers=CPU_NUM)
+                         pin_memory=True, num_workers=CPU_NUM)
 
 models = {
+  'SinCos': LeNet(act_mod=trig.StackSinCos,
+                  act_args={'channel_axis': 1,
+                            'reduce_channels': True}
+                 ).to(DEVICE),
   'ReLU': LeNet(act_mod=nn.ReLU).to(DEVICE),
   'Sin': LeNet(act_mod=trig.Sin).to(DEVICE),
   'Cos': LeNet(act_mod=trig.Cos).to(DEVICE),

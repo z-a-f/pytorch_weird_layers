@@ -7,14 +7,14 @@ class LeNetBlock(nn.Module):
                pool_kwargs=None):
     super(LeNetBlock, self).__init__()
     if act_mod is None:
-      act_mod = nn.ReLU
+      act_mod = nn.ReLU()
     if conv_kwargs is None:
       conv_kwargs = {}
     if pool_kwargs is None:
       pool_kwargs = {}
     self.conv = nn.Conv2d(iC, oC, kernel_size, **conv_kwargs)
     self.pool = nn.AvgPool2d((2, 2), **pool_kwargs)
-    self.act = act_mod()
+    self.act = act_mod
 
   def forward(self, x):
     x = self.conv(x)
@@ -23,22 +23,24 @@ class LeNetBlock(nn.Module):
     return x
 
 class LeNet(nn.Module):
-  def __init__(self, act_mod=None):
+  def __init__(self, act_mod=None, act_args=None):
     super(LeNet, self).__init__()
     if act_mod is None:
       act_mod = nn.ReLU
-    self.block1 = LeNetBlock(1, 6, (5, 5), act_mod,
+    if act_args is None:
+      act_args = {}
+    self.block1 = LeNetBlock(1, 6, (5, 5), act_mod(**act_args),
                              conv_kwargs={'padding': 1})
-    self.block2 = LeNetBlock(6, 16, (5, 5), act_mod,
+    self.block2 = LeNetBlock(6, 16, (5, 5), act_mod(**act_args),
                              conv_kwargs={'padding': 1},
                              pool_kwargs={'stride': 2})
     self.conv = nn.Conv2d(16, 120, (5, 5))
-    self.act = act_mod()
+    self.act = act_mod(**act_args)
 
     self.flatten = nn.Flatten()
 
     self.fc1 = nn.Linear(120, 84)
-    self.fc1_act = act_mod()
+    self.fc1_act = act_mod(**act_args)
     self.fc2 = nn.Linear(84, 10)
 
   def forward(self, x):
